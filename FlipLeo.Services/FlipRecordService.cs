@@ -48,9 +48,11 @@ public class FlipRecordService : IFlipRecordService
                     {
                         Id = a.Id,
                         FlipRecordId = a.FlipRecordId,
+                        AddOnPresetId = a.AddOnPresetId,
                         Name = a.Name,
                         Price = a.Price,
-                        Link = a.Link
+                        Link = a.Link,
+                        ImageUrl = a.ImageUrl
                     })
                     .ToList()
             })
@@ -78,9 +80,11 @@ public class FlipRecordService : IFlipRecordService
                     {
                         Id = a.Id,
                         FlipRecordId = a.FlipRecordId,
+                        AddOnPresetId = a.AddOnPresetId,
                         Name = a.Name,
                         Price = a.Price,
-                        Link = a.Link
+                        Link = a.Link,
+                        ImageUrl = a.ImageUrl
                     })
                     .ToList()
             })
@@ -92,6 +96,7 @@ public class FlipRecordService : IFlipRecordService
     public async Task<FlipRecordDto> AddFlipRecord(FlipRecordDto flipRecord)
     {
         await ValidateAuction(flipRecord.AuctionId);
+        await ValidateAddOnPresets(flipRecord.AddOns.Select(a => a.AddOnPresetId).ToArray());
 
         var flipRecordEntity = new FlipRecordEntity
         {
@@ -104,9 +109,11 @@ public class FlipRecordService : IFlipRecordService
             AddOns = flipRecord.AddOns
                 .Select(a => new AddOnEntity
                 {
+                    AddOnPresetId = a.AddOnPresetId,
                     Name = a.Name,
                     Price = a.Price,
-                    Link = a.Link
+                    Link = a.Link,
+                    ImageUrl = a.ImageUrl
                 })
                 .ToList()
         };
@@ -163,12 +170,16 @@ public class FlipRecordService : IFlipRecordService
         if (!flipRecordExists)
             throw new NotFoundException($"Flip record with ID {flipRecordId} not found");
 
+        await ValidateAddOnPresets(addOn.AddOnPresetId);
+
         _flipLeoUnitOfWork.FlipRecordAddOnRepository.Add(new AddOnEntity
         {
             FlipRecordId = flipRecordId,
+            AddOnPresetId = addOn.AddOnPresetId,
             Name = addOn.Name,
             Price = addOn.Price,
-            Link = addOn.Link
+            Link = addOn.Link,
+            ImageUrl = addOn.ImageUrl
         });
 
         await _flipLeoUnitOfWork.CommitAsync();
@@ -185,6 +196,7 @@ public class FlipRecordService : IFlipRecordService
         addOnToUpdate.Name = addOn.Name;
         addOnToUpdate.Price = addOn.Price;
         addOnToUpdate.Link = addOn.Link;
+        addOnToUpdate.ImageUrl = addOn.ImageUrl;
 
         await _flipLeoUnitOfWork.CommitAsync();
 
@@ -201,6 +213,21 @@ public class FlipRecordService : IFlipRecordService
         await _flipLeoUnitOfWork.CommitAsync();
 
         return await GetFlipRecord(addOnToDelete.FlipRecordId);
+    }
+
+    /// <summary>Presets are per user: make sure any preset ids sent belong to the caller.</summary>
+    private async Task ValidateAddOnPresets(params int?[] addOnPresetIds)
+    {
+        var ids = addOnPresetIds.Where(id => id.HasValue).Select(id => id!.Value).Distinct().ToList();
+        if (ids.Count == 0)
+            return;
+
+        var ownedCount = await _flipLeoUnitOfWork.AddOnPresetRepository
+            .Find(p => ids.Contains(p.Id) && p.UserId == UserId)
+            .CountAsync();
+
+        if (ownedCount != ids.Count)
+            throw new BadRequestException("One or more add-on presets do not exist.");
     }
 
     private async Task ValidateAuction(int? auctionId)

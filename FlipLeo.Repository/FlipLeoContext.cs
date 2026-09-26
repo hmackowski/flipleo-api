@@ -6,6 +6,7 @@ namespace FlipLeo.Repository;
 
 public class FlipLeoContext(DbContextOptions<FlipLeoContext> options) : DbContext(options)
 {
+    public DbSet<AddOnPreset> AddOnPreset { get; set; } = null!;
     public DbSet<Auction> Auction { get; set; } = null!;
     public DbSet<FlipRecord> FlipRecord { get; set; } = null!;
     public DbSet<FlipRecordAddOn> FlipRecordAddOn { get; set; } = null!;
@@ -14,6 +15,7 @@ public class FlipLeoContext(DbContextOptions<FlipLeoContext> options) : DbContex
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.ApplyConfiguration(new AddOnPresetConfiguration());
         modelBuilder.ApplyConfiguration(new AuctionConfiguration());
         modelBuilder.ApplyConfiguration(new FlipRecordConfiguration());
         modelBuilder.ApplyConfiguration(new FlipRecordAddOnConfiguration());

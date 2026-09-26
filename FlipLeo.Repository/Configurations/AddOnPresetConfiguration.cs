@@ -4,11 +4,11 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace FlipLeo.Repository.Configurations;
 
-public class FlipRecordAddOnConfiguration : IEntityTypeConfiguration<FlipRecordAddOn>
+public class AddOnPresetConfiguration : IEntityTypeConfiguration<AddOnPreset>
 {
-    public void Configure(EntityTypeBuilder<FlipRecordAddOn> builder)
+    public void Configure(EntityTypeBuilder<AddOnPreset> builder)
     {
-        builder.ToTable("FlipRecordAddOn");
+        builder.ToTable("AddOnPreset");
 
         builder.HasKey(e => e.Id);
 
@@ -19,7 +19,7 @@ public class FlipRecordAddOnConfiguration : IEntityTypeConfiguration<FlipRecordA
             .HasMaxLength(200)
             .IsUnicode(false);
 
-        builder.Property(e => e.Price)
+        builder.Property(e => e.DefaultPrice)
             .HasColumnType("decimal(10, 2)");
 
         builder.Property(e => e.Link)
@@ -32,14 +32,9 @@ public class FlipRecordAddOnConfiguration : IEntityTypeConfiguration<FlipRecordA
 
         builder.ConfigureAuditColumns();
 
-        builder.HasOne(d => d.FlipRecord).WithMany(p => p.AddOns)
-            .HasForeignKey(d => d.FlipRecordId)
+        builder.HasOne<UserAccount>().WithMany()
+            .HasForeignKey(d => d.UserId)
             .OnDelete(DeleteBehavior.ClientSetNull)
-            .HasConstraintName("FK_FlipRecordAddOn_FlipRecord");
-
-        builder.HasOne(d => d.AddOnPreset).WithMany()
-            .HasForeignKey(d => d.AddOnPresetId)
-            .OnDelete(DeleteBehavior.ClientSetNull)
-            .HasConstraintName("FK_FlipRecordAddOn_AddOnPreset");
+            .HasConstraintName("FK_AddOnPreset_UserAccount");
     }
 }

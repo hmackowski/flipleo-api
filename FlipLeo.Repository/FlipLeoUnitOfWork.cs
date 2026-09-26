@@ -10,6 +10,10 @@ public class FlipLeoUnitOfWork(FlipLeoContext context, ICurrentUserService curre
 {
     #region Repositories
 
+    private IAddOnPresetRepository? _addOnPresetRepository;
+    public IAddOnPresetRepository AddOnPresetRepository =>
+        _addOnPresetRepository ??= new AddOnPresetRepository(context);
+
     private IAuctionRepository? _auctionRepository;
     public IAuctionRepository AuctionRepository =>
         _auctionRepository ??= new AuctionRepository(context);

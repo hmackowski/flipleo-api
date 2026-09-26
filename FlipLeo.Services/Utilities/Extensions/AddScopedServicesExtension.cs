@@ -19,6 +19,7 @@ public static class AddScopedServicesExtension
         services.AddSingleton<IPasswordHasher, PasswordHasher>();
 
         // Services
+        services.AddScoped<IAddOnPresetService, AddOnPresetService>();
         services.AddScoped<IAuctionService, AuctionService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IFlipRecordService, FlipRecordService>();
