@@ -6,6 +6,9 @@ public class FlipRecord : EntityBase, ISoftDeletable
 {
     public int Id { get; set; }
 
+    /// <summary>The UserAccount that owns this flip (and its add-ons).</summary>
+    public Guid UserId { get; set; }
+
     public string ItemName { get; set; } = null!;
 
     public decimal BuyPrice { get; set; }

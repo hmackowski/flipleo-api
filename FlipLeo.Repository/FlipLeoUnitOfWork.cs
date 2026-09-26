@@ -26,6 +26,10 @@ public class FlipLeoUnitOfWork(FlipLeoContext context, ICurrentUserService curre
     public ILookupAuctionSiteRepository LookupAuctionSiteRepository =>
         _lookupAuctionSiteRepository ??= new LookupAuctionSiteRepository(context);
 
+    private IUserAccountRepository? _userAccountRepository;
+    public IUserAccountRepository UserAccountRepository =>
+        _userAccountRepository ??= new UserAccountRepository(context);
+
     #endregion Repositories
 
     public async Task CommitAsync(CancellationToken cancellationToken = default)

@@ -30,6 +30,11 @@ public class FlipRecordConfiguration : IEntityTypeConfiguration<FlipRecord>
 
         builder.ConfigureAuditColumns();
 
+        builder.HasOne<UserAccount>().WithMany()
+            .HasForeignKey(d => d.UserId)
+            .OnDelete(DeleteBehavior.ClientSetNull)
+            .HasConstraintName("FK_FlipRecord_UserAccount");
+
         builder.HasOne(d => d.Auction).WithMany(p => p.FlipRecords)
             .HasForeignKey(d => d.AuctionId)
             .OnDelete(DeleteBehavior.ClientSetNull)

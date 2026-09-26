@@ -1,11 +1,13 @@
 using System.Text.Json;
 using FlipLeo.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FlipLeo.Api.Controllers;
 
 [Route("api/lookups")]
 [ApiController]
+[Authorize]
 public class LookupController : ControllerBase
 {
     private readonly ILookupService _lookupService;

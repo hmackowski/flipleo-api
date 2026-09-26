@@ -10,6 +10,7 @@ public interface IFlipLeoUnitOfWork
     IFlipRecordRepository FlipRecordRepository { get; }
     IFlipRecordAddOnRepository FlipRecordAddOnRepository { get; }
     ILookupAuctionSiteRepository LookupAuctionSiteRepository { get; }
+    IUserAccountRepository UserAccountRepository { get; }
 
     #endregion
 

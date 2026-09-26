@@ -4,9 +4,11 @@
         <TargetFramework>net9.0</TargetFramework>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
+        <UserSecretsId>flipleo-api-7c1e4b2a-5d8f-4a39-9e61-2b0c3f8d4a17</UserSecretsId>
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.20" />
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.19" />
         <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.20">
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
