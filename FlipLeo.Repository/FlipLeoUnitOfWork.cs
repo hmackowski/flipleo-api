@@ -10,6 +10,10 @@ public class FlipLeoUnitOfWork(FlipLeoContext context, ICurrentUserService curre
 {
     #region Repositories
 
+    private IAddOnPresetRepository? _addOnPresetRepository;
+    public IAddOnPresetRepository AddOnPresetRepository =>
+        _addOnPresetRepository ??= new AddOnPresetRepository(context);
+
     private IAuctionRepository? _auctionRepository;
     public IAuctionRepository AuctionRepository =>
         _auctionRepository ??= new AuctionRepository(context);
@@ -25,6 +29,18 @@ public class FlipLeoUnitOfWork(FlipLeoContext context, ICurrentUserService curre
     private ILookupAuctionSiteRepository? _lookupAuctionSiteRepository;
     public ILookupAuctionSiteRepository LookupAuctionSiteRepository =>
         _lookupAuctionSiteRepository ??= new LookupAuctionSiteRepository(context);
+
+    private ILookupFlipStatusRepository? _lookupFlipStatusRepository;
+    public ILookupFlipStatusRepository LookupFlipStatusRepository =>
+        _lookupFlipStatusRepository ??= new LookupFlipStatusRepository(context);
+
+    private IUserAccountRepository? _userAccountRepository;
+    public IUserAccountRepository UserAccountRepository =>
+        _userAccountRepository ??= new UserAccountRepository(context);
+
+    private IUserAccountTokenRepository? _userAccountTokenRepository;
+    public IUserAccountTokenRepository UserAccountTokenRepository =>
+        _userAccountTokenRepository ??= new UserAccountTokenRepository(context);
 
     #endregion Repositories
 

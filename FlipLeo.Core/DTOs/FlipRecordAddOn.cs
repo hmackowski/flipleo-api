@@ -8,6 +8,9 @@ public class FlipRecordAddOn
 
     public int FlipRecordId { get; set; }
 
+    /// <summary>Optional: the preset this add-on was created from.</summary>
+    public int? AddOnPresetId { get; set; }
+
     [Required, MaxLength(200)]
     public string Name { get; set; } = string.Empty;
 
@@ -16,4 +19,7 @@ public class FlipRecordAddOn
 
     [MaxLength(1000)]
     public string? Link { get; set; }
+
+    [MaxLength(1000), Url(ErrorMessage = "Image link must be a full http(s) URL.")]
+    public string? ImageUrl { get; set; }
 }

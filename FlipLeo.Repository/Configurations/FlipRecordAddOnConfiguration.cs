@@ -26,11 +26,20 @@ public class FlipRecordAddOnConfiguration : IEntityTypeConfiguration<FlipRecordA
             .HasMaxLength(1000)
             .IsUnicode(false);
 
+        builder.Property(e => e.ImageUrl)
+            .HasMaxLength(1000)
+            .IsUnicode(false);
+
         builder.ConfigureAuditColumns();
 
         builder.HasOne(d => d.FlipRecord).WithMany(p => p.AddOns)
             .HasForeignKey(d => d.FlipRecordId)
             .OnDelete(DeleteBehavior.ClientSetNull)
             .HasConstraintName("FK_FlipRecordAddOn_FlipRecord");
+
+        builder.HasOne(d => d.AddOnPreset).WithMany()
+            .HasForeignKey(d => d.AddOnPresetId)
+            .OnDelete(DeleteBehavior.ClientSetNull)
+            .HasConstraintName("FK_FlipRecordAddOn_AddOnPreset");
     }
 }

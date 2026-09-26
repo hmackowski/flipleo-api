@@ -9,6 +9,8 @@ namespace FlipLeo.Api.Utilities;
 /// don't need try/catch blocks:
 ///   NotFoundException   -> 404
 ///   BadRequestException -> 400
+///   UnauthorizedException -> 401
+///   ConflictException   -> 409
 ///   anything else       -> 500 (logged)
 /// </summary>
 public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IExceptionHandler
@@ -19,6 +21,8 @@ public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IE
         {
             NotFoundException => (StatusCodes.Status404NotFound, "Not Found"),
             BadRequestException => (StatusCodes.Status400BadRequest, "Bad Request"),
+            UnauthorizedException => (StatusCodes.Status401Unauthorized, "Unauthorized"),
+            ConflictException => (StatusCodes.Status409Conflict, "Conflict"),
             _ => (StatusCodes.Status500InternalServerError, "Server Error")
         };
 

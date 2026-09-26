@@ -18,7 +18,7 @@ public class Auction
     [Required, MaxLength(1000)]
     public string Link { get; set; } = string.Empty;
 
-    [MaxLength(1000)]
+    [MaxLength(1000), Url(ErrorMessage = "Image link must be a full http(s) URL.")]
     public string? ImageUrl { get; set; }
 
     [Range(0, 99999999.99)]

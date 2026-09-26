@@ -6,6 +6,9 @@ public class Auction : EntityBase, ISoftDeletable
 {
     public int Id { get; set; }
 
+    /// <summary>The UserAccount that owns this auction.</summary>
+    public Guid UserId { get; set; }
+
     public string Name { get; set; } = null!;
 
     public int AuctionSiteId { get; set; }

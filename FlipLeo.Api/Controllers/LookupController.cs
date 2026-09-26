@@ -1,11 +1,13 @@
 using System.Text.Json;
 using FlipLeo.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FlipLeo.Api.Controllers;
 
 [Route("api/lookups")]
 [ApiController]
+[Authorize]
 public class LookupController : ControllerBase
 {
     private readonly ILookupService _lookupService;
@@ -25,6 +27,16 @@ public class LookupController : ControllerBase
         var result = await _lookupService.GetAuctionSites();
 
         _logger.LogDebug("Get Auction Sites {Results}", JsonSerializer.Serialize(result));
+
+        return Ok(result);
+    }
+
+    [HttpGet("flip-statuses")]
+    public async Task<IActionResult> GetFlipStatuses()
+    {
+        var result = await _lookupService.GetFlipStatuses();
+
+        _logger.LogDebug("Get Flip Statuses {Results}", JsonSerializer.Serialize(result));
 
         return Ok(result);
     }

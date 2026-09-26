@@ -47,6 +47,11 @@ public class AuctionConfiguration : IEntityTypeConfiguration<Auction>
 
         builder.ConfigureAuditColumns();
 
+        builder.HasOne<UserAccount>().WithMany()
+            .HasForeignKey(d => d.UserId)
+            .OnDelete(DeleteBehavior.ClientSetNull)
+            .HasConstraintName("FK_Auction_UserAccount");
+
         builder.HasOne(d => d.AuctionSite).WithMany(p => p.Auctions)
             .HasForeignKey(d => d.AuctionSiteId)
             .OnDelete(DeleteBehavior.ClientSetNull)

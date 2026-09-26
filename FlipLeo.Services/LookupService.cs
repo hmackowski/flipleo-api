@@ -27,4 +27,17 @@ public class LookupService : ILookupService
             })
             .ToArrayAsync();
     }
+
+    public async Task<FlipStatus[]> GetFlipStatuses()
+    {
+        return await _flipLeoUnitOfWork.LookupFlipStatusRepository
+            .Find(s => s.IsActive)
+            .OrderBy(s => s.SortOrder)
+            .Select(s => new FlipStatus
+            {
+                Id = s.Id,
+                Name = s.Name
+            })
+            .ToArrayAsync();
+    }
 }

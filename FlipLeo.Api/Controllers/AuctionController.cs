@@ -1,12 +1,14 @@
 using System.Text.Json;
 using FlipLeo.Core.DTOs;
 using FlipLeo.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FlipLeo.Api.Controllers;
 
 [Route("api/auctions")]
 [ApiController]
+[Authorize]
 public class AuctionController : ControllerBase
 {
     private readonly IAuctionService _auctionService;
