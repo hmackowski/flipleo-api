@@ -1,9 +1,11 @@
 using FlipLeo.Api.Utilities;
+using FlipLeo.Core.DTOs;
 using FlipLeo.Core.DTOs.Auth;
 using FlipLeo.Core.Interfaces;
 using FlipLeo.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace FlipLeo.Api.Controllers;
 
@@ -31,6 +33,7 @@ public class AuthController : ControllerBase
     // Never log the request bodies here: they contain passwords.
 
     [AllowAnonymous]
+    [EnableRateLimiting(RateLimitPolicies.Auth)]
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] RegisterRequest request)
     {
@@ -42,6 +45,7 @@ public class AuthController : ControllerBase
     }
 
     [AllowAnonymous]
+    [EnableRateLimiting(RateLimitPolicies.Auth)]
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
@@ -50,6 +54,33 @@ public class AuthController : ControllerBase
         _logger.LogInformation("User logged in {UserId}", user.Id);
 
         return Ok(_tokenService.CreateAuthResponse(user));
+    }
+
+    [AllowAnonymous]
+    [EnableRateLimiting(RateLimitPolicies.PasswordResetEmail)]
+    [HttpPost("forgot-password")]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+    {
+        await _authService.ForgotPassword(request);
+
+        // Same answer whether or not the email has an account
+        return Ok(new SuccessResult
+        {
+            Success = true,
+            Detail = "If an account exists for that email, we've sent a link to reset your password."
+        });
+    }
+
+    [AllowAnonymous]
+    [EnableRateLimiting(RateLimitPolicies.Auth)]
+    [HttpPost("reset-password")]
+    public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+    {
+        await _authService.ResetPassword(request);
+
+        _logger.LogInformation("Password reset completed");
+
+        return Ok(new SuccessResult { Success = true, Detail = "Your password has been reset. You can sign in now." });
     }
 
     [Authorize]

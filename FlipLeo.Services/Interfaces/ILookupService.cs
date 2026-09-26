@@ -5,4 +5,6 @@ namespace FlipLeo.Services.Interfaces;
 public interface ILookupService
 {
     Task<AuctionSite[]> GetAuctionSites();
+
+    Task<FlipStatus[]> GetFlipStatuses();
 }

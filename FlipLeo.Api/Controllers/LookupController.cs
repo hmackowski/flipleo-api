@@ -30,4 +30,14 @@ public class LookupController : ControllerBase
 
         return Ok(result);
     }
+
+    [HttpGet("flip-statuses")]
+    public async Task<IActionResult> GetFlipStatuses()
+    {
+        var result = await _lookupService.GetFlipStatuses();
+
+        _logger.LogDebug("Get Flip Statuses {Results}", JsonSerializer.Serialize(result));
+
+        return Ok(result);
+    }
 }

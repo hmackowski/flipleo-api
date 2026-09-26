@@ -30,9 +30,17 @@ public class FlipLeoUnitOfWork(FlipLeoContext context, ICurrentUserService curre
     public ILookupAuctionSiteRepository LookupAuctionSiteRepository =>
         _lookupAuctionSiteRepository ??= new LookupAuctionSiteRepository(context);
 
+    private ILookupFlipStatusRepository? _lookupFlipStatusRepository;
+    public ILookupFlipStatusRepository LookupFlipStatusRepository =>
+        _lookupFlipStatusRepository ??= new LookupFlipStatusRepository(context);
+
     private IUserAccountRepository? _userAccountRepository;
     public IUserAccountRepository UserAccountRepository =>
         _userAccountRepository ??= new UserAccountRepository(context);
+
+    private IUserAccountTokenRepository? _userAccountTokenRepository;
+    public IUserAccountTokenRepository UserAccountTokenRepository =>
+        _userAccountTokenRepository ??= new UserAccountTokenRepository(context);
 
     #endregion Repositories
 

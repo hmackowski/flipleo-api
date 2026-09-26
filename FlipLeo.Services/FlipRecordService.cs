@@ -1,3 +1,4 @@
+using FlipLeo.Core.Constants;
 using FlipLeo.Core.DTOs;
 using FlipLeo.Core.Exceptions;
 using FlipLeo.Core.Interfaces;
@@ -35,13 +36,20 @@ public class FlipRecordService : IFlipRecordService
             {
                 Id = f.Id,
                 ItemName = f.ItemName,
+                ImageUrl = f.ImageUrl,
                 BuyPrice = f.BuyPrice,
                 SellPrice = f.SellPrice,
                 FlipDate = f.FlipDate,
+                FlipStatusId = f.FlipStatusId,
+                FlipStatusName = f.FlipStatus.Name,
+                SoldDate = f.SoldDate,
                 AuctionId = f.AuctionId,
-                // PartsPrice and Profit are calculated (in SQL) instead of being stored in the table
+                // PartsPrice and Profit are calculated (in SQL) instead of being stored in the table.
+                // Profit only counts once the item has actually sold.
                 PartsPrice = f.AddOns.Sum(a => a.Price),
-                Profit = f.SellPrice - f.BuyPrice - f.AddOns.Sum(a => a.Price),
+                Profit = f.FlipStatusId == FlipStatusIds.Sold
+                    ? f.SellPrice - f.BuyPrice - f.AddOns.Sum(a => a.Price)
+                    : null,
                 AddOns = f.AddOns
                     .OrderBy(a => a.Id)
                     .Select(a => new AddOnDto
@@ -67,13 +75,20 @@ public class FlipRecordService : IFlipRecordService
             {
                 Id = f.Id,
                 ItemName = f.ItemName,
+                ImageUrl = f.ImageUrl,
                 BuyPrice = f.BuyPrice,
                 SellPrice = f.SellPrice,
                 FlipDate = f.FlipDate,
+                FlipStatusId = f.FlipStatusId,
+                FlipStatusName = f.FlipStatus.Name,
+                SoldDate = f.SoldDate,
                 AuctionId = f.AuctionId,
-                // PartsPrice and Profit are calculated (in SQL) instead of being stored in the table
+                // PartsPrice and Profit are calculated (in SQL) instead of being stored in the table.
+                // Profit only counts once the item has actually sold.
                 PartsPrice = f.AddOns.Sum(a => a.Price),
-                Profit = f.SellPrice - f.BuyPrice - f.AddOns.Sum(a => a.Price),
+                Profit = f.FlipStatusId == FlipStatusIds.Sold
+                    ? f.SellPrice - f.BuyPrice - f.AddOns.Sum(a => a.Price)
+                    : null,
                 AddOns = f.AddOns
                     .OrderBy(a => a.Id)
                     .Select(a => new AddOnDto
@@ -95,6 +110,7 @@ public class FlipRecordService : IFlipRecordService
 
     public async Task<FlipRecordDto> AddFlipRecord(FlipRecordDto flipRecord)
     {
+        await ValidateStatus(flipRecord);
         await ValidateAuction(flipRecord.AuctionId);
         await ValidateAddOnPresets(flipRecord.AddOns.Select(a => a.AddOnPresetId).ToArray());
 
@@ -102,9 +118,12 @@ public class FlipRecordService : IFlipRecordService
         {
             UserId = UserId,
             ItemName = flipRecord.ItemName,
+            ImageUrl = flipRecord.ImageUrl,
             BuyPrice = flipRecord.BuyPrice,
             SellPrice = flipRecord.SellPrice,
             FlipDate = flipRecord.FlipDate.Date,
+            FlipStatusId = flipRecord.FlipStatusId,
+            SoldDate = flipRecord.SoldDate,
             AuctionId = flipRecord.AuctionId,
             AddOns = flipRecord.AddOns
                 .Select(a => new AddOnEntity
@@ -128,17 +147,54 @@ public class FlipRecordService : IFlipRecordService
     public async Task<FlipRecordDto> UpdateFlipRecord(FlipRecordDto flipRecord)
     {
         var flipRecordToUpdate = await _flipLeoUnitOfWork.FlipRecordRepository
-            .SingleOrDefaultAsync(f => f.Id == flipRecord.Id && f.UserId == UserId)
+            .Find(f => f.Id == flipRecord.Id && f.UserId == UserId)
+            .Include(f => f.AddOns)
+            .SingleOrDefaultAsync()
             ?? throw new NotFoundException($"Flip record with ID {flipRecord.Id} not found");
 
+        await ValidateStatus(flipRecord);
         await ValidateAuction(flipRecord.AuctionId);
+        await ValidateAddOnPresets(flipRecord.AddOns.Where(a => a.Id == 0).Select(a => a.AddOnPresetId).ToArray());
 
         flipRecordToUpdate.ItemName = flipRecord.ItemName;
+        flipRecordToUpdate.ImageUrl = flipRecord.ImageUrl;
         flipRecordToUpdate.BuyPrice = flipRecord.BuyPrice;
         flipRecordToUpdate.SellPrice = flipRecord.SellPrice;
         flipRecordToUpdate.FlipDate = flipRecord.FlipDate.Date;
+        flipRecordToUpdate.FlipStatusId = flipRecord.FlipStatusId;
+        flipRecordToUpdate.SoldDate = flipRecord.SoldDate;
         flipRecordToUpdate.AuctionId = flipRecord.AuctionId;
+        
+        var requestedAddOns = flipRecord.AddOns.Where(a => a.Id > 0).ToDictionary(a => a.Id);
 
+        foreach (var existingAddOn in flipRecordToUpdate.AddOns.ToList())
+        {
+            if (requestedAddOns.TryGetValue(existingAddOn.Id, out var requested))
+            {
+                existingAddOn.Name = requested.Name;
+                existingAddOn.Price = requested.Price;
+                existingAddOn.Link = requested.Link;
+                existingAddOn.ImageUrl = requested.ImageUrl;
+            }
+            else
+            {
+                _flipLeoUnitOfWork.FlipRecordAddOnRepository.Delete(existingAddOn);
+            }
+        }
+
+        foreach (var newAddOn in flipRecord.AddOns.Where(a => a.Id == 0))
+        {
+            flipRecordToUpdate.AddOns.Add(new AddOnEntity
+            {
+                AddOnPresetId = newAddOn.AddOnPresetId,
+                Name = newAddOn.Name,
+                Price = newAddOn.Price,
+                Link = newAddOn.Link,
+                ImageUrl = newAddOn.ImageUrl
+            });
+        }
+
+        // Everything above is saved in one transaction
         await _flipLeoUnitOfWork.CommitAsync();
 
         return await GetFlipRecord(flipRecordToUpdate.Id);
@@ -228,6 +284,33 @@ public class FlipRecordService : IFlipRecordService
 
         if (ownedCount != ids.Count)
             throw new BadRequestException("One or more add-on presets do not exist.");
+    }
+
+    /// <summary>
+    /// Checks the status and tidies the sold fields: a Sold flip needs a sell price and a sold date
+    /// (defaults to today), and SoldDate is cleared for anything not sold.
+    /// </summary>
+    private async Task ValidateStatus(FlipRecordDto flipRecord)
+    {
+        var statusExists = await _flipLeoUnitOfWork.LookupFlipStatusRepository
+            .AnyAsync(s => s.Id == flipRecord.FlipStatusId && s.IsActive);
+
+        if (!statusExists)
+            throw new BadRequestException($"Flip status {flipRecord.FlipStatusId} does not exist.");
+
+        if (flipRecord.FlipStatusId != FlipStatusIds.Sold)
+        {
+            flipRecord.SoldDate = null;
+            return;
+        }
+
+        if (flipRecord.SellPrice is null)
+            throw new BadRequestException("A sold flip needs a sell price.");
+
+        flipRecord.SoldDate = (flipRecord.SoldDate ?? DateTime.Today).Date;
+
+        if (flipRecord.SoldDate < flipRecord.FlipDate.Date)
+            throw new BadRequestException("The sold date can't be before the bought date.");
     }
 
     private async Task ValidateAuction(int? auctionId)

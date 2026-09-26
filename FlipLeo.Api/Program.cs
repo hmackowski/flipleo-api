@@ -1,9 +1,12 @@
 using System.Text;
+using System.Threading.RateLimiting;
 using FlipLeo.Api.Utilities;
 using FlipLeo.Core.Interfaces;
 using FlipLeo.Repository;
 using FlipLeo.Services.Utilities.Extensions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -83,6 +86,41 @@ builder.Services
     });
 builder.Services.AddAuthorization();
 
+// Account emails (password reset). SMTP settings come from the "Email" section.
+builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection(EmailSettings.SectionName));
+builder.Services.AddScoped<IAccountEmailService, AccountEmailService>();
+
+// ---------- Rate limiting (slows down password guessing / spam on the auth endpoints) ----------
+// Limits are per IP address. Behind a proxy (e.g. Cloudflare Tunnel) you'd also need forwarded headers
+// so RemoteIpAddress is the real visitor, not the proxy.
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    // Login / register / reset: 10 tries a minute
+    options.AddPolicy(RateLimitPolicies.Auth, httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+
+    // Forgot password sends emails, so it's stricter: 5 every 15 minutes
+    options.AddPolicy(RateLimitPolicies.PasswordResetEmail, httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromMinutes(15), QueueLimit = 0 }));
+
+    // Same ProblemDetails shape as our other errors, so the UI shows the message
+    options.OnRejected = async (context, cancellationToken) =>
+    {
+        await context.HttpContext.Response.WriteAsJsonAsync(new ProblemDetails
+        {
+            Status = StatusCodes.Status429TooManyRequests,
+            Title = "Too Many Requests",
+            Detail = "Too many attempts. Please wait a few minutes and try again."
+        }, cancellationToken);
+    };
+});
+
 // Service exceptions (NotFound/BadRequest/Unauthorized/Conflict) -> ProblemDetails responses
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
@@ -105,6 +143,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseCors("AngularDev");
+app.UseRateLimiter();      // after CORS so 429 responses still reach the browser
 app.UseAuthentication();   // who are you? (reads the JWT)
 app.UseAuthorization();    // are you allowed? ([Authorize])
 app.MapControllers();
