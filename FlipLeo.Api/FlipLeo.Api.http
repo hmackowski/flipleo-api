@@ -1,0 +1,74 @@
+@host = http://localhost:5142
+
+### Auction sites (seeded: eBay, Goodwill)
+GET {{host}}/api/lookups/auction-sites
+
+### All auctions
+GET {{host}}/api/auctions
+
+### Add an auction
+POST {{host}}/api/auctions
+Content-Type: application/json
+
+{
+  "name": "PlayStation 5 - Disc Edition",
+  "auctionSiteId": 1,
+  "link": "https://www.ebay.com/itm/123456",
+  "imageUrl": null,
+  "currentPrice": 150.00,
+  "startTime": "2026-09-26T09:00:00",
+  "endTime": "2026-09-30T21:00:00",
+  "notes": "Controller included"
+}
+
+### Update an auction (id goes in the body)
+PUT {{host}}/api/auctions
+Content-Type: application/json
+
+{
+  "id": 1,
+  "name": "PlayStation 5 - Disc Edition",
+  "auctionSiteId": 1,
+  "link": "https://www.ebay.com/itm/123456",
+  "currentPrice": 175.00,
+  "startTime": "2026-09-26T09:00:00",
+  "endTime": "2026-09-30T21:00:00",
+  "notes": "Price went up"
+}
+
+### Delete (soft delete) an auction
+DELETE {{host}}/api/auctions/1
+
+### All flip records
+GET {{host}}/api/flip-records
+
+### Add a flip record with an add-on
+POST {{host}}/api/flip-records
+Content-Type: application/json
+
+{
+  "itemName": "PlayStation 5",
+  "buyPrice": 100.00,
+  "sellPrice": 300.00,
+  "flipDate": "2026-09-26",
+  "auctionId": null,
+  "addOns": [
+    { "name": "Replacement controller", "price": 25.00, "link": null }
+  ]
+}
+
+### Add another add-on to flip record 1
+POST {{host}}/api/flip-records/1/add-ons
+Content-Type: application/json
+
+{
+  "name": "HDMI cable",
+  "price": 8.50,
+  "link": null
+}
+
+### Delete an add-on
+DELETE {{host}}/api/flip-records/add-ons/1
+
+### Delete (soft delete) a flip record and its add-ons
+DELETE {{host}}/api/flip-records/1
