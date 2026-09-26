@@ -22,7 +22,6 @@ public static class AddScopedServicesExtension
         services.AddScoped<IAuctionService, AuctionService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IFlipRecordService, FlipRecordService>();
-        services.AddScoped<IGreetingService, GreetingService>();
         services.AddScoped<ILookupService, LookupService>();
     }
 }
