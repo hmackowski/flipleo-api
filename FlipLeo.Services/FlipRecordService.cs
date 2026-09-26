@@ -1,4 +1,3 @@
-using System.Linq.Expressions;
 using FlipLeo.Core.DTOs;
 using FlipLeo.Core.Exceptions;
 using FlipLeo.Core.Interfaces;
@@ -26,37 +25,35 @@ public class FlipRecordService : IFlipRecordService
     // Every query is scoped to the logged-in user. Add-ons are owned through their FlipRecord.
     private Guid UserId => _currentUserService.GetRequiredUserId();
 
-    // PartsPrice and Profit are calculated here (in SQL) instead of being stored in the table
-    private static readonly Expression<Func<FlipRecordEntity, FlipRecordDto>> ToDto = f => new FlipRecordDto
-    {
-        Id = f.Id,
-        ItemName = f.ItemName,
-        BuyPrice = f.BuyPrice,
-        SellPrice = f.SellPrice,
-        FlipDate = f.FlipDate,
-        AuctionId = f.AuctionId,
-        PartsPrice = f.AddOns.Sum(a => a.Price),
-        Profit = f.SellPrice - f.BuyPrice - f.AddOns.Sum(a => a.Price),
-        AddOns = f.AddOns
-            .OrderBy(a => a.Id)
-            .Select(a => new AddOnDto
-            {
-                Id = a.Id,
-                FlipRecordId = a.FlipRecordId,
-                Name = a.Name,
-                Price = a.Price,
-                Link = a.Link
-            })
-            .ToList()
-    };
-
     public async Task<FlipRecordDto[]> GetFlipRecords()
     {
         return await _flipLeoUnitOfWork.FlipRecordRepository
             .Find(f => f.UserId == UserId)
             .OrderByDescending(f => f.FlipDate)
             .ThenByDescending(f => f.Id)
-            .Select(ToDto)
+            .Select(f => new FlipRecordDto
+            {
+                Id = f.Id,
+                ItemName = f.ItemName,
+                BuyPrice = f.BuyPrice,
+                SellPrice = f.SellPrice,
+                FlipDate = f.FlipDate,
+                AuctionId = f.AuctionId,
+                // PartsPrice and Profit are calculated (in SQL) instead of being stored in the table
+                PartsPrice = f.AddOns.Sum(a => a.Price),
+                Profit = f.SellPrice - f.BuyPrice - f.AddOns.Sum(a => a.Price),
+                AddOns = f.AddOns
+                    .OrderBy(a => a.Id)
+                    .Select(a => new AddOnDto
+                    {
+                        Id = a.Id,
+                        FlipRecordId = a.FlipRecordId,
+                        Name = a.Name,
+                        Price = a.Price,
+                        Link = a.Link
+                    })
+                    .ToList()
+            })
             .ToArrayAsync();
     }
 
@@ -64,7 +61,29 @@ public class FlipRecordService : IFlipRecordService
     {
         var flipRecord = await _flipLeoUnitOfWork.FlipRecordRepository
             .Find(f => f.Id == flipRecordId && f.UserId == UserId)
-            .Select(ToDto)
+            .Select(f => new FlipRecordDto
+            {
+                Id = f.Id,
+                ItemName = f.ItemName,
+                BuyPrice = f.BuyPrice,
+                SellPrice = f.SellPrice,
+                FlipDate = f.FlipDate,
+                AuctionId = f.AuctionId,
+                // PartsPrice and Profit are calculated (in SQL) instead of being stored in the table
+                PartsPrice = f.AddOns.Sum(a => a.Price),
+                Profit = f.SellPrice - f.BuyPrice - f.AddOns.Sum(a => a.Price),
+                AddOns = f.AddOns
+                    .OrderBy(a => a.Id)
+                    .Select(a => new AddOnDto
+                    {
+                        Id = a.Id,
+                        FlipRecordId = a.FlipRecordId,
+                        Name = a.Name,
+                        Price = a.Price,
+                        Link = a.Link
+                    })
+                    .ToList()
+            })
             .SingleOrDefaultAsync();
 
         return flipRecord ?? throw new NotFoundException($"Flip record with ID {flipRecordId} not found");

@@ -1,4 +1,3 @@
-using System.Linq.Expressions;
 using FlipLeo.Core.DTOs;
 using FlipLeo.Core.Exceptions;
 using FlipLeo.Core.Interfaces;
@@ -24,27 +23,24 @@ public class AuctionService : IAuctionService
     // Every query is scoped to the logged-in user, so nobody can see or change someone else's auctions
     private Guid UserId => _currentUserService.GetRequiredUserId();
 
-    // One projection shared by every read, so the entity -> DTO mapping lives in one place
-    private static readonly Expression<Func<AuctionEntity, AuctionDto>> ToDto = a => new AuctionDto
-    {
-        Id = a.Id,
-        Name = a.Name,
-        AuctionSiteId = a.AuctionSiteId,
-        AuctionSiteName = a.AuctionSite.Name,
-        Link = a.Link,
-        ImageUrl = a.ImageUrl,
-        CurrentPrice = a.CurrentPrice,
-        StartTime = a.StartTime,
-        EndTime = a.EndTime,
-        Notes = a.Notes
-    };
-
     public async Task<AuctionDto[]> GetAuctions()
     {
         return await _flipLeoUnitOfWork.AuctionRepository
             .Find(a => a.UserId == UserId)
             .OrderBy(a => a.EndTime)
-            .Select(ToDto)
+            .Select(a => new AuctionDto
+            {
+                Id = a.Id,
+                Name = a.Name,
+                AuctionSiteId = a.AuctionSiteId,
+                AuctionSiteName = a.AuctionSite.Name,
+                Link = a.Link,
+                ImageUrl = a.ImageUrl,
+                CurrentPrice = a.CurrentPrice,
+                StartTime = a.StartTime,
+                EndTime = a.EndTime,
+                Notes = a.Notes
+            })
             .ToArrayAsync();
     }
 
@@ -52,7 +48,19 @@ public class AuctionService : IAuctionService
     {
         var auction = await _flipLeoUnitOfWork.AuctionRepository
             .Find(a => a.Id == auctionId && a.UserId == UserId)
-            .Select(ToDto)
+            .Select(a => new AuctionDto
+            {
+                Id = a.Id,
+                Name = a.Name,
+                AuctionSiteId = a.AuctionSiteId,
+                AuctionSiteName = a.AuctionSite.Name,
+                Link = a.Link,
+                ImageUrl = a.ImageUrl,
+                CurrentPrice = a.CurrentPrice,
+                StartTime = a.StartTime,
+                EndTime = a.EndTime,
+                Notes = a.Notes
+            })
             .SingleOrDefaultAsync();
 
         return auction ?? throw new NotFoundException($"Auction with ID {auctionId} not found");
