@@ -5,6 +5,7 @@ using FlipLeo.Core.Interfaces;
 using FlipLeo.Repository;
 using FlipLeo.Services.Utilities.Extensions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
@@ -51,7 +52,10 @@ builder.Services.AddOpenApi(options => options.AddDocumentTransformer((document,
 }));
 
 builder.Services.AddDbContext<FlipLeoContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("FlipLeo")));
+    options.UseSqlServer(
+        builder.Configuration.GetConnectionString("FlipLeo"),
+        // Azure SQL can briefly drop connections (failover, or waking from auto-pause): retry instead of failing
+        sql => sql.EnableRetryOnFailure(maxRetryCount: 5, maxRetryDelay: TimeSpan.FromSeconds(10), errorNumbersToAdd: null)));
 
 builder.Services.AddScopedServices();
 
@@ -125,13 +129,34 @@ builder.Services.AddRateLimiter(options =>
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
-// Allow the Angular dev server to call the API
-builder.Services.AddCors(options => options.AddPolicy("AngularDev", policy =>
-    policy.WithOrigins("http://localhost:4200").AllowAnyHeader().AllowAnyMethod()));
+// ---------- CORS: which websites may call the API ----------
+// Development: the Angular dev server. Production: https://flipleo.com (appsettings.Production.json "Cors:AllowedOrigins").
+const string CorsPolicyName = "FlipLeoUi";
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+if (allowedOrigins.Length == 0)
+    allowedOrigins = ["http://localhost:4200"];
+
+builder.Services.AddCors(options => options.AddPolicy(CorsPolicyName, policy =>
+    policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod()));
+
+// ---------- Hosting behind a proxy (Azure App Service) ----------
+// App Service's front end terminates HTTPS and forwards the request. These headers carry the visitor's real
+// IP (needed for per-IP rate limiting) and the original https scheme.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    // App Service's proxy address isn't fixed, so trust the forwarding hop it adds (ForwardLimit = 1)
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
+// ---------- Health check: GET /health (used by App Service health check + uptime monitors) ----------
+builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
 // ---------- HTTP pipeline ----------
+app.UseForwardedHeaders();  // first, so everything after sees the real client IP / https
 app.UseExceptionHandler();
 
 if (app.Environment.IsDevelopment())
@@ -142,10 +167,11 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-app.UseCors("AngularDev");
+app.UseCors(CorsPolicyName);
 app.UseRateLimiter();      // after CORS so 429 responses still reach the browser
 app.UseAuthentication();   // who are you? (reads the JWT)
 app.UseAuthorization();    // are you allowed? ([Authorize])
 app.MapControllers();
+app.MapHealthChecks("/health");
 
 app.Run();

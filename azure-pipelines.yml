@@ -1,0 +1,72 @@
+# FlipLeo API: build on every push to develop/main, deploy to Azure App Service from main.
+# Setup (service connection, variable group, environment): see "FlipLeo Go-Live Guide.docx".
+
+trigger:
+  branches:
+    include: [ main, develop ]
+
+pr:
+  branches:
+    include: [ main, develop ]
+
+variables:
+  buildConfiguration: Release
+  azureSubscription: flipleo-azure      # Azure Resource Manager service connection name
+  apiAppName: flipleo-api               # App Service name
+
+stages:
+  - stage: Build
+    jobs:
+      - job: Build
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+          - task: UseDotNet@2
+            displayName: Use .NET 9 SDK
+            inputs:
+              packageType: sdk
+              version: 9.0.x
+
+          - script: dotnet restore flipleo.API.sln
+            displayName: Restore
+
+          - script: dotnet build flipleo.API.sln --configuration $(buildConfiguration) --no-restore
+            displayName: Build
+
+          # Add once there is a test project:
+          # - script: dotnet test flipleo.API.sln --configuration $(buildConfiguration) --no-build
+          #   displayName: Test
+
+          - script: >
+              dotnet publish FlipLeo.Api/FlipLeo.Api.csproj
+              --configuration $(buildConfiguration) --no-build
+              --output $(Build.ArtifactStagingDirectory)/api
+            displayName: Publish
+
+          - task: PublishPipelineArtifact@1
+            displayName: Upload artifact
+            inputs:
+              targetPath: $(Build.ArtifactStagingDirectory)/api
+              artifact: api
+
+  - stage: Deploy
+    displayName: Deploy to production
+    dependsOn: Build
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    jobs:
+      - deployment: DeployApi
+        environment: flipleo-production     # add an approval check on this environment
+        pool:
+          vmImage: ubuntu-latest
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureWebApp@1
+                  displayName: Deploy to App Service
+                  inputs:
+                    azureSubscription: $(azureSubscription)
+                    appType: webAppLinux
+                    appName: $(apiAppName)
+                    package: $(Pipeline.Workspace)/api
+                    runtimeStack: DOTNETCORE|9.0
